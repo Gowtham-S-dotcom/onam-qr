@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: onam-qr
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn webScanner:scanner --host 0.0.0.0 --port 8080
+    regions:
+      - oregon
+    # envVars:
+    #   - key: PYTHON_VERSION
+    #     value: 3.9.0
