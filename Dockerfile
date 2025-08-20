@@ -1,8 +1,9 @@
-FROM python:3.9-slim
+FROM python:3.9.18-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
+ENV PYTHON_VERSION=3.9.18
 
 # Set work directory
 WORKDIR /app
