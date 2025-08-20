@@ -4,13 +4,12 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from firebase_admin import credentials, firestore, initialize_app
 from urllib.parse import quote_plus
 import asyncio
+import os
 import json
 import tempfile
-import os
 from dotenv import load_dotenv
 
 load_dotenv()
-
 username = os.getenv("MONGO_USERNAME")
 password = os.getenv("MONGO_PASSWORD")
 
@@ -19,13 +18,17 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 )
 logger = logging.getLogger(__name__)
-# username = "onam2025"
-# password = "Onam@2025"  # example with special characters
 
+# Global variable to store Firestore client
+_firestore_client = None
+_firebase_initialized = False
 
-
-# Initialize Firebase using environment variables
 def initialize_firebase():
+    global _firebase_initialized, _firestore_client
+    
+    if _firebase_initialized:
+        return _firestore_client
+    
     firebase_creds = os.getenv("FIREBASE_CREDS")
     if firebase_creds:
         try:
@@ -33,7 +36,10 @@ def initialize_firebase():
             creds_dict = json.loads(firebase_creds)
             cred = credentials.Certificate(creds_dict)
             initialize_app(cred)
-            return
+            _firestore_client = firestore.client()
+            _firebase_initialized = True
+            logger.info("Firebase initialized successfully from environment variable")
+            return _firestore_client
         except json.JSONDecodeError as e:
             logger.error(f"Error parsing Firebase credentials JSON: {e}")
             # If JSON parsing fails, write to a temporary file
@@ -43,9 +49,12 @@ def initialize_firebase():
                     temp_path = temp.name
                 cred = credentials.Certificate(temp_path)
                 initialize_app(cred)
+                _firestore_client = firestore.client()
+                _firebase_initialized = True
                 # Clean up the temporary file
                 os.unlink(temp_path)
-                return
+                logger.info("Firebase initialized successfully using temporary file")
+                return _firestore_client
             except Exception as e:
                 logger.error(f"Error using temporary file for Firebase credentials: {e}")
                 # Fall back to local file if available
@@ -55,14 +64,17 @@ def initialize_firebase():
     try:
         cred = credentials.Certificate("scannerUtils/refl-onam-firebase-adminsdk-5f38f-981e1b4cd9.json")
         initialize_app(cred)
-        return
+        _firestore_client = firestore.client()
+        _firebase_initialized = True
+        logger.info("Firebase initialized successfully from local file")
+        return _firestore_client
     except FileNotFoundError:
         logger.error("Firebase credentials file not found and environment variable not set")
         raise ValueError("Firebase credentials not found. Please set FIREBASE_CREDS environment variable.")
 
-# Initialize Firebase
-initialize_firebase()
-
+def get_firestore_client():
+    """Get the Firestore client, initializing Firebase if necessary"""
+    return initialize_firebase()
 
 async def update_ticket_status(serial_number: int):
     try:
@@ -92,12 +104,10 @@ async def update_ticket_status(serial_number: int):
     except Exception as e:
         logger.error(f"Failed to update ticket status: {e}")
 
-cred = credentials.Certificate("scannerUtils/refl-onam-firebase-adminsdk-5f38f-981e1b4cd9.json")
-initialize_app(cred)
 async def update_firestore_ticket_status(serial_number: int):
-    db = firestore.client()
-    collection = db.collection("friends")
     try:
+        db = get_firestore_client()
+        collection = db.collection("friends")
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         logger.info(f"Looking for document with sno: {serial_number}")
         
@@ -147,7 +157,7 @@ async def get_all_mongo_entries():
 
 async def get_all_firestore_entries():
     try:
-        db = firestore.client()
+        db = get_firestore_client()
         collection = db.collection("friends")
         docs = collection.stream()
         entries = []
@@ -181,8 +191,7 @@ async def get_all_firestore_entries():
 
 async def reset_firestore_attendance():
     try:
-        # Use the same client as other functions
-        db = firestore.client()
+        db = get_firestore_client()
         tickets_ref = db.collection('friends')
         
         # Get all documents in the collection
@@ -205,7 +214,7 @@ async def reset_firestore_attendance():
     
 async def get_attendance_count():
     try:
-        db = firestore.client()
+        db = get_firestore_client()
         collection = db.collection("friends")
         
         # Query for documents where attendance is True
@@ -222,7 +231,7 @@ async def get_attendance_count():
     
 async def remove_duplicate_firestore_entries():
     try:
-        db = firestore.client()
+        db = get_firestore_client()
         collection = db.collection("friends")
         docs = collection.stream()
         
