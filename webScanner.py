@@ -1,6 +1,8 @@
 import csv
+import json
 import logging
 from io import StringIO
+import os
 
 import uvicorn
 from fastapi import FastAPI, Request, Form
@@ -9,7 +11,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import StreamingResponse
-
+from firebase_admin import firestore
 import scannerSecret
 from model.scanResult import ScanResult
 from scannerUtils.database import get_attendance_count, reset_firestore_attendance, update_ticket_status, update_firestore_ticket_status, get_all_mongo_entries, get_all_firestore_entries
@@ -153,6 +155,43 @@ async def reset_attendance(request: Request):
             "dashboard.html",
             {"request": request, "user": session_user, "error": "Failed to reset attendance"}
         )
+    
+@scanner.get("/debug-firebase")
+async def debug_firebase():
+    firebase_creds = os.getenv("FIREBASE_CREDS")
+    if firebase_creds:
+        try:
+            # Try to parse the JSON
+            creds_dict = json.loads(firebase_creds)
+            return {
+                "status": "success",
+                "keys": list(creds_dict.keys()),
+                "type": type(firebase_creds).__name__,
+                "length": len(firebase_creds)
+            }
+        except json.JSONDecodeError as e:
+            return {
+                "status": "error",
+                "message": f"Invalid JSON: {str(e)}",
+                "first_100_chars": firebase_creds[:100] if firebase_creds else None
+            }
+    else:
+        return {
+            "status": "error",
+            "message": "FIREBASE_CREDS environment variable not set"
+        }
+
+@scanner.get("/test-firebase")
+async def test_firebase():
+    try:
+        db = firestore.client()
+        collection = db.collection("friends")
+        docs = collection.limit(1).stream()
+        for doc in docs:
+            return {"status": "success", "doc_id": doc.id}
+        return {"status": "success", "message": "Connected but no documents found"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 
 # if __name__ == "__main__":

@@ -4,7 +4,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from firebase_admin import credentials, firestore, initialize_app
 from urllib.parse import quote_plus
 import asyncio
-
+import json
+import tempfile
 import os
 from dotenv import load_dotenv
 
@@ -20,6 +21,48 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 # username = "onam2025"
 # password = "Onam@2025"  # example with special characters
+
+
+
+# Initialize Firebase using environment variables
+def initialize_firebase():
+    firebase_creds = os.getenv("FIREBASE_CREDS")
+    if firebase_creds:
+        try:
+            # Try to parse the JSON directly
+            creds_dict = json.loads(firebase_creds)
+            cred = credentials.Certificate(creds_dict)
+            initialize_app(cred)
+            return
+        except json.JSONDecodeError as e:
+            logger.error(f"Error parsing Firebase credentials JSON: {e}")
+            # If JSON parsing fails, write to a temporary file
+            try:
+                with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as temp:
+                    temp.write(firebase_creds)
+                    temp_path = temp.name
+                cred = credentials.Certificate(temp_path)
+                initialize_app(cred)
+                # Clean up the temporary file
+                os.unlink(temp_path)
+                return
+            except Exception as e:
+                logger.error(f"Error using temporary file for Firebase credentials: {e}")
+                # Fall back to local file if available
+                pass
+    
+    # Fallback to local file (for development)
+    try:
+        cred = credentials.Certificate("scannerUtils/refl-onam-firebase-adminsdk-5f38f-981e1b4cd9.json")
+        initialize_app(cred)
+        return
+    except FileNotFoundError:
+        logger.error("Firebase credentials file not found and environment variable not set")
+        raise ValueError("Firebase credentials not found. Please set FIREBASE_CREDS environment variable.")
+
+# Initialize Firebase
+initialize_firebase()
+
 
 async def update_ticket_status(serial_number: int):
     try:
