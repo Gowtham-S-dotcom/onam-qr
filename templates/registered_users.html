@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registered Users</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+.attendance-summary {
+    margin: 20px 0;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.count-display {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    margin: 20px 0;
+}
+
+.count-item {
+    text-align: center;
+    padding: 15px;
+    min-width: 150px;
+    background-color: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.count-label {
+    display: block;
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-bottom: 5px;
+}
+
+.count-value {
+    display: block;
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.present {
+    color: #28a745; /* Green */
+}
+
+.absent {
+    color: #dc3545; /* Red */
+}
+
+.progress-container {
+    margin: 20px 0;
+}
+
+.progress-bar {
+    height: 20px;
+    background-color: #e9ecef;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: #28a745;
+    transition: width 0.5s ease-in-out;
+}
+
+.progress-percentage {
+    text-align: right;
+    font-weight: bold;
+}
+</style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2>Registered Users</h2>
+            <a href="{{ url_for('download_csv') }}" class="btn btn-primary">Download as CSV</a>
+        </div>
+
+        {% if entries %}
+            <table class="table table-striped table-bordered mt-3">
+                <thead>
+                    <tr>
+                        <th>Serial No</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Attendance</th>
+                        <th>UTC Entry time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in entries %}
+                        <tr>
+                            <td>{{ entry.sno }}</td>
+                            <td>{{ entry.name }}</td>
+                            <td>{{ entry.email }}</td>
+                            <td>{{ entry.phone }}</td>
+                            <td>{{ entry.attendance }}</td>
+                            <td>{{ entry.attendance_time }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="attendance-summary">
+    <h2>Attendance Summary</h2>
+    <div class="count-display">
+        <div class="count-item">
+            <span class="count-label">Total Registered:</span>
+            <span class="count-value">{{ total_count }}</span>
+        </div>
+        <div class="count-item">
+            <span class="count-label">Present (Scanned):</span>
+            <span class="count-value present">{{ present_count }}</span>
+        </div>
+        <div class="count-item">
+            <span class="count-label">Absent:</span>
+            <span class="count-value absent">{{ total_count - present_count }}</span>
+        </div>
+    </div>
+    
+    <div class="progress-container">
+        <div class="progress-label">Attendance Rate</div>
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ (present_count / total_count * 100) if total_count > 0 else 0 }}%"></div>
+        </div>
+        <div class="progress-percentage">
+            {{ "%.1f"|format((present_count / total_count * 100) if total_count > 0 else 0) }}%
+        </div>
+    </div>
+</div>
+        {% else %}
+            <div class="alert alert-info mt-3" role="alert">
+                No registered users found.
+            </div>
+        {% endif %}
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

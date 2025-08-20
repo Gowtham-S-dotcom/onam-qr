@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.4/html5-qrcode.min.js"
+            integrity="sha512-k/KAe4Yff9EUdYI5/IAHlwUswqeipP+Cp5qnrsUjTPCgl51La2/JhyyjNciztD7mWNKLSXci48m7cctATKfLlQ=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            overflow: hidden;
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-image: url('{{ url_for('static', path='images/p1.jpg') }}');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        #scanner-container {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            margin: 20px;
+        }
+
+        #reader {
+            width: 100%;
+            max-width: 600px;
+            height: 250px;
+            margin-bottom: 20px;
+        }
+
+        #result {
+            font-size: 1.2rem;
+            margin-top: 20px;
+            word-wrap: break-word;
+        }
+        #welcome-note {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ffffff;
+            text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+        }
+
+        .button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            background-color: #007bff;
+            text-decoration: none;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .button:hover {
+            background-color: #0056b3;
+        }
+        .reset-section {
+    margin-top: 30px;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+}
+
+        /* Mobile-first design */
+        @media (max-width: 600px) {
+            body, html {
+                font-size: 14px;
+            }
+
+            #scanner-container {
+                padding: 20px;
+                margin: 10px;
+                width: 90%;
+                max-width: none;
+            }
+
+            #reader {
+                height: 200px;
+            }
+
+            .button {
+                font-size: 0.9rem;
+                padding: 12px;
+            }
+
+            #result {
+                font-size: 1rem;
+            }
+
+            #retry {
+                font-size: 0.9rem;
+                padding: 8px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <span id="welcome-note">welcome, {{ user }}</span>
+        <div id="scanner-container">
+            <div id="reader"></div>
+            <div id="result"></div>
+            <button id="retry" class="button" style="display:none;" onclick="startScanning()">Scan Another QR Code</button>
+            <div>
+<!--                <button class="button" onclick="navigateToGenerate()">Generate New Token</button>-->
+                <button class="button" onclick="navigateToRegistered()">Registered User</button>
+            </div>
+            <div class="reset-section">
+    <h2>Reset Attendance</h2>
+    <p>This will reset all attendance statuses to "Not Scanned".</p>
+    <form action="/reset-attendance" method="post" onsubmit="return confirm('Are you sure you want to reset all attendance data? This action cannot be undone.');">
+        <button type="submit" class="btn btn-danger">Reset All Attendance</button>
+    </form>
+</div>
+        </div>
+
+    </main>
+    <script>
+        let scanner;
+        let hasScanned = false;
+
+        function navigateToGenerate() {
+            window.location.href = '/generate-token'; // Replace with your actual URL
+        }
+
+        function navigateToRegistered() {
+            window.location.href = '/registered-user'; // Replace with your actual URL
+        }
+
+        function startScanning() {
+            document.getElementById('result').innerHTML = '';
+            document.getElementById('retry').style.display = 'none';
+            hasScanned = false; // Reset the flag for retry
+
+            if (scanner) {
+                scanner.clear(); // Clear the previous scanner
+            }
+
+            const readerDiv = document.createElement('div');
+            readerDiv.id = 'reader';
+            document.querySelector('#scanner-container').appendChild(readerDiv);
+
+            scanner = new Html5QrcodeScanner('reader', {
+                qrbox: {
+                    width: 250,
+                    height: 250,
+                },
+                fps: 20,
+            });
+
+            scanner.render(success, error);
+
+            setTimeout(() => {
+                if (scanner && !hasScanned) {
+                    scanner.clear();
+                    document.getElementById('reader').remove();
+                    document.getElementById('result').innerHTML = `
+                        <h2>Scan Timed Out</h2>
+                        <p>No QR code detected. Please try again.</p>
+                    `;
+                    document.getElementById('retry').style.display = 'block';
+                }
+            }, 15000);
+        }
+
+        function success(result) {
+            if (!hasScanned) {
+                hasScanned = true;
+                if (scanner) {
+                    scanner.clear();
+                    document.getElementById('reader').remove();
+                }
+
+                document.getElementById('result').innerHTML = `
+                    <h2>Success!</h2>
+                    <p><a href="${result}" style="color: #007bff;">${result}</a></p>
+                `;
+                alert("QR Code Scanned Successfully!");
+                document.getElementById('retry').style.display = 'block';
+
+                fetch('/scan-result', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ qr_code: result })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Server response:', data);
+                })
+                .catch(error => {
+                    console.error("Error sending data to the server:", error);
+                });
+            }
+        }
+
+        function error(err) {
+            console.log('QR Code scan error:', err);
+        }
+
+        window.onload = startScanning;
+    </script>
+</body>
+</html>

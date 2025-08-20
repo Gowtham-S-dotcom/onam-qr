@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.env
+.DS_Store
+*.log
+scanner.log
+scannerUtils/refl-onam-firebase-adminsdk-5f38f-981e1b4cd9.json
